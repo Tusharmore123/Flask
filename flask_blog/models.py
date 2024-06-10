@@ -1,9 +1,11 @@
 from datetime import datetime
 # from flask import db #it is in the situation called circcular imports
 # since we import models in app.py
+from itsdangerous import TimedJSONWebSignatureSerializer as Serializer # type: ignore
 # and then again we are importing db from app
 from flask_blog import db,loginManger
 from flask_login import UserMixin
+from flask import current_app
 # now flask in running with name __main__ so now we can access db and writing th import model
 # after db
 
@@ -23,6 +25,19 @@ class User(db.Model,UserMixin):
     posts=db.relationship('Post',backref='author',lazy=True)
     def __repr__(self):
         return f"User ({self.name,self.email,self.image_file})"
+    
+    def get_reset_token(self,expire_sec):
+        s=Serializer(current_app.config['SECRET_KEY'],expire_sec)
+        token=s.dumps({'user_id':self.id}).decode('utf-8')
+        return token
+    
+    def verify_token(token):
+        s=Serializer(current_app.config['SECRET_KEY'])
+        try:
+            user_id=s.loads(token)['user_id'] # type: ignore
+        except:
+            return None
+        return User.query.get(user_id)
 
 class Post(db.Model):
     id=db.Column(db.Integer,primary_key=True)
